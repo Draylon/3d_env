@@ -32,12 +32,7 @@ class Face{
 
 class Environment{
     constructor(canvasName,framerate){
-        console.enableConsole=true;
-        console.clog = (t)=>{
-            if(console.enableConsole)
-                console.log(t);
-        };
-
+        this.isRendering=false;
         this.canvasD = document.getElementById(canvasName);
 
         this.canvasD.onclick = ()=>{
@@ -47,6 +42,9 @@ class Environment{
         //this.canvasD = document.createElement("canvas");
         this.ctx = this.canvasD.getContext('2d');
         this.framerate=framerate;
+
+        this.cw=this.canvasD.width;
+        this.ch=this.canvasD.height;
 
         this.fps=0;
         this.floatFps=0;
@@ -63,7 +61,7 @@ class Environment{
         var ob1 = this.objects[0];
         this.currentCamera=cam1;
         ob1.pos.move(0,0,25);
-        cam1.pos.move(-65,0,-10);
+        cam1.pos.move(-40,0,-60);
 
         this.resizeCanvas();
         window.addEventListener("resize",()=>{this.resizeCanvas(this)});
@@ -93,12 +91,18 @@ class Environment{
         }
     }
     keyDown(env,e){
-        //console.clog(e);
+        //console.log(e);
         switch(e.code){
+            case "keyP":
+                if(env.isRendering == false)
+                    env.startRendering();
+                else
+                    env.stopRendering();
+                break;
             case "keyF":
                 env.currentCamera.fieldOfView(-2);
                 break;
-                case "keyR":
+            case "keyR":
                     env.currentCamera.fieldOfView(2);
                 break;
             case "KeyA":
@@ -128,43 +132,58 @@ class Environment{
         }
     }
 
-    convert3dcoord(v){
+    convert3dcoord(v,camera,cw,ch){
         //this.currentCamera.pos.toVertex(e.pos).sum(face.vertex_list[0])
-        v.rotateAxis(this.currentCamera.axis);
+        v.rotateAxis(camera.axis);
+        console.log("====");
+        console.log(v);
         //if(v.defaultAngle() <= this.currentCamera.fov/2)
-        var xz=Vertex.prototype._defaultAngle(v.x,v.z);
-        var yz=Vertex.prototype._defaultAngle(v.y,v.z);
-        var angl = v.escalar(this.currentCamera.tiltUnit);
-        
-        if(angl > 0){
-            var m=v.mod();
-            v=v.proj(this.currentCamera.tiltUnit);
-            v=v.mult(m);
-            console.clog(v);
+        var angl=Vertex.prototype._defaultAngle(v.x,v.y,v.z);
+        var xz=angl[0];
+        var yz=angl[1];
+        console.log("angulos",angl);
+        //var angl = v.escalar(this.currentCamera.tiltUnit);
+        if(v.x < 0)
+            xz*=-1;
+        if(v.y < 0)
+            yz*=-1;
 
-            var pX = (v.x * (40/v.z)),
-            pY = (v.y * (40/v.z));
-            var cx = this.canvasD.width/2;
-            var cy = this.canvasD.height/2;
-            return new Point(pX+cx,pY+cy,0);
+        var fovX,fovY;
+        if(cw > ch){
+            fovX = camera.fov;
+            fovY = camera.fov * ch / cw;
+        }else if(ch > cw){
+            fovY = camera.fov;
+            fovX = camera.fov * cw / ch;
         }else{
-            var m=v.mod();
-            v=v.proj(this.currentCamera.tiltUnit.mult(-1));
-            v=v.mult(m);
-            console.clog(v);
-
-            var pX = (v.x * (40/v.z)),
-            pY = (v.y * (40/v.z));
-            var cx = this.canvasD.width/2;
-            var cy = this.canvasD.height/2;
-            return new Point(pX+cx,pY+cy,0);
+            fovX = camera.fov;
+            fovY = camera.fov;
         }
+        
+        var fx = Math.round( ((cw/(2*fovX)) * xz) ) + (cw/2);
+        var fy = Math.round( ((ch/(2*fovY)) * yz) ) + (ch/2);
+        //console.log(cw,fovX,xz);
+        //console.log(ch,fovY,yz);
+        console.log(fx,fy);
+        return new Point(fx,fy,0);
     };
     resizeCanvas(env){
         if(!env)
             env=this;
         env.canvasD.width = env.canvasD.clientWidth;
         env.canvasD.height = env.canvasD.clientHeight;
+        env.cw=env.canvasD.width;
+        env.ch=env.canvasD.height;
+        if(env.cw > env.ch){
+            env.fovX = env.fov;
+            env.fovY = env.fov * env.ch / env.cw;
+        }else if(env.ch > env.cw){
+            env.fovY = env.fov;
+            env.fovX = env.fov * env.cw / env.ch;
+        }else{
+            env.fovX = env.fov;
+            env.fovY = env.fov;
+        }
     };
     startRendering(){
         this.rendering = setInterval(()=>{
@@ -176,38 +195,46 @@ class Environment{
             this.objects.forEach(e => {
                 var bfc=false;
                 e.faces.forEach(face => {
-                    var ce=e.pos.toVertex(this.currentCamera.pos);
-                    var ef=face.normal.newRotateAxis(e.axis).mult(face.direction);
-                    bfc = ce.escalar(ef);
+                    var cpos=e.pos.toVertex(this.currentCamera.pos);
+                    //console.log(ce);
+                    var ef=face.normal.newRotateAxis(e.axis);
+                    //console.log(ef);
+                    ef=ef.mult(face.direction);
+                    //console.log(ef);
+                    bfc = cpos.escalar(ef);
+                    //console.log(bfc);
                     if(bfc > 0){
                         this.ctx.fillStyle = face.color;
                         this.ctx.beginPath();
-                        var cpos = ce.mult(-1);
+                        //var cpos = ce.mult(-1);
 
-                        console.clog("GO");
-                        console.clog(face);
+                        console.log("GO");
+                        console.log(face);
                         
                         var pos;
                         var pos1 = this.convert3dcoord(
-                            cpos.sum(face.vertex_list[0].newRotateAxis(e.axis))
+                            cpos.sum(face.vertex_list[0]).newRotateAxis(e.axis,-1),
+                            this.currentCamera,this.cw,this.ch
                             );
-                        console.clog(pos1);
+                        console.log(this.currentCamera.pos);
+                        console.log(pos1);
                         this.ctx.moveTo(pos1.x,pos1.y);
                         for(var vertex=1;vertex < face.vertex_list.length;vertex++){
                             pos = this.convert3dcoord(
-                                cpos.sum(face.vertex_list[vertex].newRotateAxis(e.axis))
+                                cpos.sum(face.vertex_list[vertex]).newRotateAxis(e.axis,-1),
+                                this.currentCamera,this.cw,this.ch
                                 );
-                            console.clog(pos);
+                            console.log(pos);
                             this.ctx.lineTo(pos.x,pos.y);
                         }
                         this.ctx.lineTo(pos1.x,pos1.y);
                         this.ctx.fill();
                     }else{
-                        console.clog("\\/\\/\\/");
-                        console.clog("BFC");
-                        console.clog(face);
-                        console.clog("BFC");
-                        console.clog("^^^^");
+                        //console.log("\\/\\/\\/");
+                        //console.log("BFC");
+                        //console.log(face);
+                        //console.log("BFC");
+                        //console.log("^^^^");
                     }
                 });
             });
@@ -218,6 +245,7 @@ class Environment{
             this.ctx.fillText(this.floatFps+" fps",10,20);
             
             this.fps++;
+            this.isRendering=true;
             this.stopRendering();
         },this.framerate < 60 && this.framerate > 0 ? 1000/this.framerate : 15);
     
@@ -230,6 +258,7 @@ class Environment{
     stopRendering(){
         clearInterval(this.rendering);
         clearInterval(this.fpsCount);
+        this.isRendering=false;
     }
 };
 

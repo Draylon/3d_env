@@ -39,13 +39,13 @@ export class Vertex{
             z+=vert.z;
         });
         return new Vertex(x/list.length,y/list.length,z/list.length);
-    }
+    };
     cross(v){
         var x = this.y*v.z - this.z*v.y;
         var y = this.z*v.x - this.x*v.z;
         var z = this.x*v.y - this.y*v.x;
         return new Vertex(x,y,z);
-    }
+    };
     proj(v){
         var dot=this.escalar(v);
         var w1=this.x-v.x,w2=this.y-v.y,w3=this.z-v.z;
@@ -55,15 +55,21 @@ export class Vertex{
         //var p1=dot/mag * 
         //return v.mult( (this.escalar(v))/(v.escalar(v)) );
         return new Vertex(p1,p2,p3);
-    }
+    };
     defaultAngle(){
         return Math.round(Math.acos((this.z) / this.mod())*180/Math.PI);
-    }
-    _defaultAngle(x,y){
-        return Math.round(Math.acos(
-            (y) / (Math.pow(x,2)+Math.pow(y,2))
-        )*180/Math.PI);
-    }
+    };
+    _defaultAngle(x,y,z){
+        var ag=[
+            Math.round(Math.acos(
+                (z) / (Math.pow(x,2)+Math.pow(z,2))
+            )*180/Math.PI),
+            Math.round(Math.acos(
+                (z) / (Math.pow(y,2)+Math.pow(z,2))
+            )*180/Math.PI)
+        ];
+        return ag;
+    };
     rotateX(yaw){
         var cosa = Math.cos(yaw),sina = Math.sin(yaw);
 
@@ -78,7 +84,7 @@ export class Vertex{
         this.x = Axx*plx + Axy*ply + Axz*plz;
         this.y = Ayx*plx + Ayy*ply + Ayz*plz;
         this.z = Azx*plx + Azy*ply + Azz*plz;
-    }
+    };
     rotateY(pitch){
         var cosb = Math.cos(pitch),sinb = Math.sin(pitch);
 
@@ -99,7 +105,7 @@ export class Vertex{
         this.x = Axx*plx + Axy*ply + Axz*plz;
         this.y = Ayx*plx + Ayy*ply + Ayz*plz;
         this.z = Azx*plx + Azy*ply + Azz*plz;
-    }
+    };
     rotateXY(yaw,pitch){
         var cosa = Math.cos(yaw),sina = Math.sin(yaw);
         var cosb = Math.cos(pitch),sinb = Math.sin(pitch);
@@ -121,7 +127,7 @@ export class Vertex{
         this.x = Axx*plx + Axy*ply + Axz*plz;
         this.y = Ayx*plx + Ayy*ply + Ayz*plz;
         this.z = Azx*plx + Azy*ply + Azz*plz;
-    }
+    };
     rotateZ(roll){
         var cosc = Math.cos(roll),sinc = Math.sin(roll);
 
@@ -142,7 +148,7 @@ export class Vertex{
         this.x = Axx*plx + Axy*ply + Axz*plz;
         this.y = Ayx*plx + Ayy*ply + Ayz*plz;
         this.z = Azx*plx + Azy*ply + Azz*plz;
-    }
+    };
     rotate(yaw,pitch,roll){
         var cosa = Math.cos(yaw),sina = Math.sin(yaw);
         var cosb = Math.cos(pitch),sinb = Math.sin(pitch);
@@ -165,11 +171,11 @@ export class Vertex{
         this.x = Axx*plx + Axy*ply + Axz*plz;
         this.y = Ayx*plx + Ayy*ply + Ayz*plz;
         this.z = Azx*plx + Azy*ply + Azz*plz;
-    }
+    };
     rotateAxis(axis){
-        var cosa = Math.cos(axis.x),sina = Math.sin(yaw);
-        var cosb = Math.cos(pitch),sinb = Math.sin(pitch);
-        var cosc = Math.cos(roll),sinc = Math.sin(roll);
+        var cosa = Math.cos(axis.yaw),sina = Math.sin(axis.yaw);
+        var cosb = Math.cos(axis.pitch),sinb = Math.sin(axis.pitch);
+        var cosc = Math.cos(axis.roll),sinc = Math.sin(axis.roll);
 
         var Axx = cosa*cosb;
         var Axy = cosa*sinb*sinc - sina*cosc;
@@ -188,11 +194,11 @@ export class Vertex{
         this.x = Axx*plx + Axy*ply + Axz*plz;
         this.y = Ayx*plx + Ayy*ply + Ayz*plz;
         this.z = Azx*plx + Azy*ply + Azz*plz;
-    }
-    newRotateAxis(axis){
-        var cosa = Math.cos(axis.x),sina = Math.sin(yaw);
-        var cosb = Math.cos(pitch),sinb = Math.sin(pitch);
-        var cosc = Math.cos(roll),sinc = Math.sin(roll);
+    };
+    newRotateAxis(axis,coef=1){
+        var cosa = Math.cos(axis.yaw*coef),sina = Math.sin(axis.yaw*coef);
+        var cosb = Math.cos(axis.pitch*coef),sinb = Math.sin(axis.pitch*coef);
+        var cosc = Math.cos(axis.roll*coef),sinc = Math.sin(axis.roll*coef);
 
         var Axx = cosa*cosb;
         var Axy = cosa*sinb*sinc - sina*cosc;
@@ -207,8 +213,11 @@ export class Vertex{
         var Azz = cosb*cosc;
 
         var plx=this.x,ply=this.y,plz=this.z;
+        //console.log(plx,ply,plz,Axx,Axy,Axz,Ayx,Ayy,Ayz,Azx,Azy,Azz);
+        //var asd = new Vertex(Axx*plx + Axy*ply + Axz*plz,Ayx*plx + Ayy*ply + Ayz*plz,Azx*plx + Azy*ply + Azz*plz);
         return new Vertex(Axx*plx + Axy*ply + Axz*plz,Ayx*plx + Ayy*ply + Ayz*plz,Azx*plx + Azy*ply + Azz*plz);
-    }
+        return asd;
+    };
     //===========
     _sum(a,b){
         return new Vertex(a.x+b.x,a.y+b.y,a.z+b.z);
@@ -227,7 +236,7 @@ export class Vertex{
             z+=vert.z;
         });
         return new Vertex(x/list.length,y/list.length,z/list.length);
-    }
+    };
     _cross(a,b){
         var x = a.y*b.z - a.z*b.y;
         var y = a.z*b.x - a.x*b.z;

@@ -12,8 +12,12 @@
         <script type="module" src="render.js"></script>
         <script>
             var up;
+            Math.round2 = (n,c)=>{
+                var cut = Math.pow(10,c);
+                return Math.round(n * cut) / cut;
+            }
             window.addEventListener("load",()=>{
-                up = new RenderJS.Environment("canvas",3);
+                up = new RenderJS.Environment("canvas",15);
                 up.startRendering();
             });
         </script>

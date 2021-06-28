@@ -11,6 +11,11 @@ export class Point{
         this.y+=y;
         this.z+=z;
     }
+    moveDirection(v){
+        this.x+=v.x;
+        this.y+=v.y;
+        this.z+=v.z;
+    }
     addVertex(v){
         return new Point(this.x+v.x,this.y+v.y,this.z+v.z);
     }

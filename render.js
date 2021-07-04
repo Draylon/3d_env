@@ -31,9 +31,17 @@ class Face{
 };
 
 class Environment{
-    constructor(canvasName,framerate){
-        this.isRendering=false;
-        this.canvasD = document.getElementById(canvasName);
+    constructor(canvasContainer,framerate){
+        this.enableRendering=false;
+        this.container = canvasContainer;
+        this.canvasD = document.createElement("canvas");
+        this.canvasD.width=1920;
+        this.canvasD.height=1080;
+        this.canvasD.style = "position: absolute;top: 0;left: 0;width: 100%;height: 100%;";
+        this.canvasF = document.createElement("canvas");
+        this.canvasF.width=300;
+        this.canvasF.height=150;
+        this.canvasF.style = "position: absolute;top: 0;left: 0;";
 
         this.canvasD.onclick = ()=>{
             this.canvasD.requestPointerLock();
@@ -41,6 +49,7 @@ class Environment{
 
         //this.canvasD = document.createElement("canvas");
         this.ctx = this.canvasD.getContext('2d');
+        this.fps_ctx = this.canvasF.getContext('2d');
         this.framerate=framerate;
 
         this.cw=this.canvasD.width;
@@ -53,83 +62,85 @@ class Environment{
         this.objects = [];
         this.cameras = [];
         this.currentCamera = null;
-
-        this.objects.push(new GenericShape());
-        this.cameras.push(new Camera());
-
-        var cam1 = this.cameras[0];
-        var ob1 = this.objects[0];
-        this.currentCamera=cam1;
-        ob1.move(0,0,25);
-        cam1.move(-40,0,-60);
+        
+        canvasContainer.append(this.canvasD);
+        canvasContainer.append(this.canvasF);
 
         this.resizeCanvas();
-        window.addEventListener("resize",()=>{this.resizeCanvas(this)});
-        window.addEventListener("keydown",(e)=>{this.keyDown(this,e)});
-        window.addEventListener("mousemove", (e)=>{this.mouseMove(this,e)}, false);
-        document.addEventListener('pointerlockchange', ()=>{this.lockChange(this)}, false);
+        window.addEventListener("resize",this.resizeCanvas.bind(this));
+        window.addEventListener("keydown",this.keyDown.bind(this));
+        window.addEventListener("mousemove",this.mouseMove.bind(this), false);
+        document.addEventListener('pointerlockchange',this.lockChange.bind(this), false);
     };
-    lockChange(env){
-        env.cursorLock=!env.cursorLock;
-    }
-    mouseMove(env,e){
-        if(env.cursorLock){
+    addObject(object){
+        this.objects.push(object);
+        return object;
+    };
+    addCamera(cam){
+        this.cameras.push(cam);
+        return cam;
+    };
+    lockChange(){
+        this.cursorLock=!this.cursorLock;
+    };
+    mouseMove(e){
+        if(this.cursorLock){
             var movementX = e.movementX ||e.mozMovementX||e.webkitMovementX||0;
             var movementY = e.movementY ||e.mozMovementY||e.webkitMovementY||0;
             if(movementX != 0){
-                movementX*=env.currentCamera.sensitivity;
+                movementX*=this.currentCamera.sensitivity;
                 if(movementY != 0){
-                    movementY*=env.currentCamera.sensitivity;
-                    env.currentCamera.axis.tiltYZ(-movementX,movementY);
+                    movementY*=this.currentCamera.sensitivity;
+                    this.currentCamera.axis.tiltYZ(-movementX,movementY);
                 }else{
-                    env.currentCamera.axis.tiltY(-movementX);
+                    this.currentCamera.axis.tiltY(-movementX);
                 }
             }else if(movementY != 0){
-                movementY*=env.currentCamera.sensitivity;
-                env.currentCamera.axis.tiltZ(movementY);
+                movementY*=this.currentCamera.sensitivity;
+                this.currentCamera.axis.tiltZ(movementY);
             }
         }
-    }
+    };
     //input -> acao
     //x -> z | y -> x | z -> y
-    keyDown(env,e){
+    keyDown(e){
         //console.log(e.code);
         switch(e.code){
             case "KeyP":
-                if(env.isRendering == false)
-                    env.startRendering();
+                if(this.enableRendering == false)
+                    this.startRendering();
                 else
-                    env.stopRendering();
+                    this.stopRendering();
                 break;
             case "KeyF":
-                env.currentCamera.fieldOfView(-2);
+                this.currentCamera.fieldOfView(-2);
                 break;
                 case "KeyR":
-                env.currentCamera.fieldOfView(2);
+                this.currentCamera.fieldOfView(2);
                 break;
             case "KeyA":
-                env.currentCamera.move(-3,0,0);
+                this.currentCamera.move(-3,0,0);
                 break;
             case "KeyD":
-                env.currentCamera.move(3,0,0);
+                this.currentCamera.move(3,0,0);
                 break;
             case "KeyW":
-                env.currentCamera.move(0,0,2);
+                this.currentCamera.move(0,0,2);
                 break;
             case "KeyS":
-                env.currentCamera.move(0,0,-2);
+                this.currentCamera.move(0,0,-2);
                 break;
             case "KeyQ":
-                env.currentCamera.axis.tiltX(-env.currentCamera.sensitivity);
+                this.currentCamera.axis.tiltX(-this.currentCamera.sensitivity);
                 break;
             case "KeyE":
-                    env.currentCamera.axis.tiltX(env.currentCamera.sensitivity);
+                    this.currentCamera.axis.tiltX(this.currentCamera.sensitivity);
                 break;
             case "Space":
-                env.currentCamera.move(0,-2,0);
+                this.currentCamera.move(0,-2,0);
                 break;
             case "ControlLeft":
-                env.currentCamera.move(0,2,0);
+                this.currentCamera.move(0,2,0);
                 break;
         }
     }
@@ -169,98 +180,108 @@ class Environment{
         //console.log(fx,fy);
         return new Point(fx,fy,0);
     };
-    resizeCanvas(env){
-        if(!env)
-            env=this;
-        env.canvasD.width = env.canvasD.clientWidth;
-        env.canvasD.height = env.canvasD.clientHeight;
-        env.cw=env.canvasD.width;
-        env.ch=env.canvasD.height;
-        if(env.cw > env.ch){
-            env.fovX = env.fov;
-            env.fovY = env.fov * env.ch / env.cw;
-        }else if(env.ch > env.cw){
-            env.fovY = env.fov;
-            env.fovX = env.fov * env.cw / env.ch;
+    resizeCanvas(){
+        this.canvasD.width = this.canvasD.clientWidth;
+        this.canvasD.height = this.canvasD.clientHeight;
+        this.cw=this.canvasD.width;
+        this.ch=this.canvasD.height;
+        if(this.cw > this.ch){
+            this.fovX = this.fov;
+            this.fovY = this.fov * this.ch / this.cw;
+        }else if(this.ch > this.cw){
+            this.fovY = this.fov;
+            this.fovX = this.fov * this.cw / this.ch;
         }else{
-            env.fovX = env.fov;
-            env.fovY = env.fov;
+            this.fovX = this.fov;
+            this.fovY = this.fov;
         }
     };
     startRendering(){
-        this.rendering = setInterval(()=>{
-            // Background
-            this.ctx.fillStyle = "#000000";
-            this.ctx.fillRect(0,0,this.canvasD.width,this.canvasD.height);
-            
+        this.enableRendering=true;
+        setTimeout(()=>{
+            window.requestAnimationFrame(this.render.bind(this));
+        },0);
+        setTimeout(()=>{
+            this.fpsCount = setInterval(()=>{
+                if(!this.enableRendering)
+                    clearInterval(this.fpsCount);
+                this.floatFps=this.fps;
+                //FPS
+                this.fps_ctx.clearRect(0,0,this.canvasF.width,this.canvasF.height);
+                this.fps_ctx.fillStyle = "#FFFFFF";
+                this.fps_ctx.font = "20px Verdana";
+                this.fps_ctx.fillText(this.floatFps+" fps",10,20);
+                this.fps=0;
+            },1000);
+        },0);
+    };
+    
+    render(){
+        // Background
+        this.ctx.fillStyle = "#000000";
+        //this.ctx.fillRect(0,0,this.canvasD.width,this.canvasD.height);
+        this.ctx.clearRect(0,0,this.canvasD.width,this.canvasD.height);
+        
 
-            this.objects.forEach(e => {
-                var bfc=false;
-                e.faces.forEach(face => {
-                    var cpos=this.currentCamera.pos.toVertex(e.pos).sum(face.center.newRotateAxis(e.axis));
-                    var epos=this.currentCamera.pos.toVertex(e.pos);
-                    //console.log(ce);
-                    var ef=face.normal.newRotateAxis(e.axis);
+        this.objects.forEach(e => {
+            var bfc;
+            e.faces.forEach(face => {
+                
+                var cpos=this.currentCamera.pos.toVertex(e.pos).sum(face.center.newRotateAxis(e.axis));
+                var epos=this.currentCamera.pos.toVertex(e.pos);
+                //console.log(ce);
+                if(face.direction == 0){
+                    bfc = -1;
+                }else{
                     //console.log(ef);
-                    ef=ef.mult(face.direction);
-                    //console.log(ef);
-                    bfc = cpos.escalar(ef);
-                    //console.log(bfc);
-                    if(bfc < 0){
-                        this.ctx.fillStyle = face.color;
-                        this.ctx.beginPath();
+                    bfc = cpos.escalar(face.normal.newRotateAxis(e.axis).mult(face.direction));
+                }
+                //console.log(bfc);
+                if(bfc < 0){
+                    this.ctx.fillStyle = face.color;
+                    this.ctx.beginPath();
 
-                        //console.log("GO");
-                        //console.log(face);
-                        
-                        var pos;
-                        var pos1 = this.convert3dcoord(
-                            epos.sum(face.vertex_list[0]).newRotateAxis(e.axis,-1),
+                    //console.log("GO");
+                    //console.log(face);
+                    
+                    var pos;
+                    var pos1 = this.convert3dcoord(
+                        epos.sum(face.vertex_list[0]).newRotateAxis(e.axis,-1),
+                        this.currentCamera,this.cw,this.ch
+                        );
+                    //console.log(this.currentCamera.pos);
+                    //console.log(pos1);
+                    this.ctx.moveTo(pos1.x,pos1.y);
+                    for(var vertex=1;vertex < face.vertex_list.length;vertex++){
+                        pos = this.convert3dcoord(
+                            epos.sum(face.vertex_list[vertex]).newRotateAxis(e.axis,-1),
                             this.currentCamera,this.cw,this.ch
                             );
-                        //console.log(this.currentCamera.pos);
-                        //console.log(pos1);
-                        this.ctx.moveTo(pos1.x,pos1.y);
-                        for(var vertex=1;vertex < face.vertex_list.length;vertex++){
-                            pos = this.convert3dcoord(
-                                epos.sum(face.vertex_list[vertex]).newRotateAxis(e.axis,-1),
-                                this.currentCamera,this.cw,this.ch
-                                );
-                            //console.log(pos);
-                            this.ctx.lineTo(pos.x,pos.y);
-                        }
-                        this.ctx.lineTo(pos1.x,pos1.y);
-                        this.ctx.fill();
-                    }else{
-                        //console.log("\\/\\/\\/");
-                        //console.log("BFC");
-                        //console.log(face);
-                        //console.log("BFC");
-                        //console.log("^^^^");
+                        //console.log(pos);
+                        this.ctx.lineTo(pos.x,pos.y);
                     }
-                });
+                    this.ctx.lineTo(pos1.x,pos1.y);
+                    this.ctx.fill();
+                }//else{
+                    //console.log("\\/\\/\\/");
+                    //console.log("BFC");
+                    //console.log(face);
+                    //console.log("BFC");
+                    //console.log("^^^^");
+                //}
             });
-
-            //FPS
-            this.ctx.fillStyle = "#FFFFFF";
-            this.ctx.font = "20px Verdana";
-            this.ctx.fillText(this.floatFps+" fps",10,20);
-            
-            this.fps++;
-            this.isRendering=true;
-            //this.stopRendering();
-        },this.framerate < 60 && this.framerate > 0 ? 1000/this.framerate : 15);
+        });
+        this.fps++;
+        if(this.enableRendering)
+            window.requestAnimationFrame(this.render.bind(this));
+        //this.stopRendering();
+    };
     
-        this.fpsCount = setInterval(()=>{
-            this.floatFps=this.fps;
-            this.fps=0;
-        },1000);
-    }
+    
 
     stopRendering(){
-        clearInterval(this.rendering);
         clearInterval(this.fpsCount);
-        this.isRendering=false;
+        this.enableRendering=false;
     }
 };
 
@@ -302,7 +323,7 @@ class GenericShape extends BaseObject{
 class Camera extends BaseObject{
     constructor(){
         super();
-        this.fov=90;
+        this.fov=50;
         this.sensitivity=0.03;
         this.target=null; // Qualquer objeto BaseObject
     }
@@ -323,4 +344,4 @@ class Camera extends BaseObject{
 };
 
 
-window.RenderJS = {Environment,BaseObject,Camera,Vertex,Face};
+window.RenderJS = {Environment,GenericShape,BaseObject,Camera,Face};

@@ -4,10 +4,10 @@
             *{
                 margin: 0;
             }
-            canvas{
+            /* canvas{
                 height: 100vh;
                 width: 100vw;
-            }
+            } */
         </style>
         <script type="module" src="render.js"></script>
         <script>
@@ -17,12 +17,13 @@
                 return Math.round(n * cut) / cut;
             }
             window.addEventListener("load",()=>{
-                up = new RenderJS.Environment("canvas",15);
-                up.startRendering();
+                up = new RenderJS.Environment(document.getElementById("canvasContainer"));
+                var ob1 = up.addObject(new RenderJS.GenericShape());
+                up.currentCamera = up.addCamera(new RenderJS.Camera());
+                ob1.move(0,0,25);
+                up.currentCamera.move(-40,0,-60);
             });
         </script>
     </head>
-    <body>
-        <canvas id="canvas" width="1920" height="1080"></canvas>
-    </body>
+    <body id="canvasContainer"></body>
 </html>
